@@ -1,65 +1,60 @@
-import Image from "next/image";
+import PlayerCard from "@/components/PlayerCard";
+import AdminPanel from "@/components/AdminPanel";
+import Link from "next/link";
+import { supabase } from "@/lib/supabase";
 
-export default function Home() {
+// Prevent static rendering so it fetches fresh data
+export const dynamic = 'force-dynamic';
+
+export default async function Home() {
+  // Fetch real players from the Supabase database
+  const { data: players, error } = await supabase
+    .from('players')
+    .select('*')
+    .order('hype_score', { ascending: false });
+
+  if (error) {
+    console.error("Error fetching players:", error);
+  }
+
+  // Map the database rows to match our PlayerCard props expected format
+  const formattedPlayers = (players || []).map(p => ({
+    ...p,
+    // Use stylized image if available, fallback to raw photo
+    image_url: p.stylized_image_url || p.raw_image_url
+  }));
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen bg-zinc-950 text-white flex flex-col items-center p-8 overflow-hidden relative">
+      {/* Background Glow */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-500/20 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-500/20 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="text-center space-y-6 relative z-10 mt-16 mb-20">
+        <h1 className="text-7xl font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 via-white to-zinc-400 drop-shadow-2xl">
+          LIVE XI
+        </h1>
+        <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-medium">
+          The real-time football platform driven by match performance and internet hype.
+        </p>
+      </div>
+
+      {formattedPlayers.length === 0 ? (
+        <div className="text-center text-zinc-500 py-12 relative z-10">
+          <p className="text-xl">No players in database yet.</p>
+          <p>Run the Ingestion tool below to populate the World Cup test data!</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 relative z-10 w-full max-w-7xl px-4 place-items-center">
+          {formattedPlayers.map((player) => (
+            <Link key={player.id} href={`/player/${player.id}`} className="block transition-transform hover:-translate-y-2">
+               <PlayerCard player={player as any} />
+            </Link>
+          ))}
         </div>
-      </main>
-    </div>
+      )}
+
+      <AdminPanel />
+    </main>
   );
 }
