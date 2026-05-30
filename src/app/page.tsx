@@ -2,27 +2,39 @@ import PlayerCard from "@/components/PlayerCard";
 import AdminPanel from "@/components/AdminPanel";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { mapPlayersForDisplay } from "@/lib/player-display";
+import type { CardRecord, Player, PlayerRecord } from "@/types/database";
+import { Flame } from "lucide-react";
 
 // Prevent static rendering so it fetches fresh data
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  // Fetch real players from the Supabase database
   const { data: players, error } = await supabase
-    .from('players')
-    .select('*')
-    .order('hype_score', { ascending: false });
+    .from("players")
+    .select("*")
+    .order("hype_score", { ascending: false });
 
   if (error) {
     console.error("Error fetching players:", error);
   }
 
-  // Map the database rows to match our PlayerCard props expected format
-  const formattedPlayers = (players || []).map(p => ({
-    ...p,
-    // Use stylized image if available, fallback to raw photo
-    image_url: p.stylized_image_url || p.raw_image_url
-  }));
+  const playerRows = (players || []) as PlayerRecord[];
+  const playerIds = playerRows.map((player) => player.id);
+
+  const { data: cards, error: cardsError } = playerIds.length
+    ? await supabase
+        .from("cards")
+        .select("*")
+        .in("player_id", playerIds)
+        .eq("is_active", true)
+    : { data: [], error: null };
+
+  if (cardsError) {
+    console.error("Error fetching active cards:", cardsError);
+  }
+
+  const formattedPlayers: Player[] = mapPlayersForDisplay(playerRows, (cards || []) as CardRecord[]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white flex flex-col items-center p-8 overflow-hidden relative">
@@ -37,6 +49,15 @@ export default async function Home() {
         <p className="text-xl text-zinc-400 max-w-2xl mx-auto font-medium">
           The real-time football platform driven by match performance and internet hype.
         </p>
+        <div className="flex justify-center">
+          <Link
+            href="/trending"
+            className="inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.2em] text-orange-100 transition-colors hover:bg-orange-500/20"
+          >
+            <Flame className="w-4 h-4" />
+            Trending Players
+          </Link>
+        </div>
       </div>
 
       {formattedPlayers.length === 0 ? (
@@ -48,7 +69,7 @@ export default async function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 relative z-10 w-full max-w-7xl px-4 place-items-center">
           {formattedPlayers.map((player) => (
             <Link key={player.id} href={`/player/${player.id}`} className="block transition-transform hover:-translate-y-2">
-               <PlayerCard player={player as any} />
+               <PlayerCard player={player} />
             </Link>
           ))}
         </div>
